@@ -1,0 +1,13 @@
+LICENSE
+MANIFEST.in
+README.md
+setup.py
+allianceauth_fat_filters.egg-info/PKG-INFO
+allianceauth_fat_filters.egg-info/SOURCES.txt
+allianceauth_fat_filters.egg-info/dependency_links.txt
+allianceauth_fat_filters.egg-info/top_level.txt
+fatfilters/__init__.py
+fatfilters/admin.py
+fatfilters/apps.py
+fatfilters/auth_hooks.py
+fatfilters/models.py
