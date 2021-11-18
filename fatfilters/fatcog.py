@@ -22,15 +22,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_site_url():  # regex sso url
-    regex = r"^(.+)\/s.+"
-    matches = re.finditer(regex, settings.ESI_SSO_CALLBACK_URL, re.MULTILINE)
-    url = "http://"
-
-    for m in matches:
-        url = m.groups()[0] # first match
-
-
 class FatCog(commands.Cog):
     """
     All about fats!
@@ -53,7 +44,7 @@ class FatCog(commands.Cog):
             last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
         embed = Embed()
         embed.title = "Recent FAT Activity"
-        embed.description = f"[Plese check auth for more info!]({get_site_url()})"
+        embed.description = f"Plese check auth for more info!"
 
         embed.add_field(name="Last 3 Months",
                         value=fat_count, 
