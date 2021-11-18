@@ -46,10 +46,11 @@ class FatCog(commands.Cog):
         fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
             .order_by("afatlink__afattime")
         fat_count = fats.count()
-        ships = fats.values_list('shiptype', flat=True)
-        last_fleet = fats.first().afatlink
-        last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
-        last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
+        if fat_count > 0:
+            ships = fats.values_list('shiptype', flat=True)
+            last_fleet = fats.first().afatlink
+            last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
+            last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
         embed = Embed()
         embed.title = "Recent FAT Activity"
         embed.description = f"[Plese check auth for more info!]({get_site_url()})"
@@ -57,12 +58,13 @@ class FatCog(commands.Cog):
         embed.add_field(name="Last 3 Months",
                         value=fat_count, 
                         inline=False)
-        embed.add_field(name="Ships",
-                        value=", ".join(ships), 
-                        inline=False)
-        embed.add_field(name="Last Fleet",
-                        value=last_message, 
-                        inline=False)
+        if fat_count > 0:
+            embed.add_field(name="Ships",
+                            value=", ".join(ships), 
+                            inline=False)
+            embed.add_field(name="Last Fleet",
+                            value=last_message, 
+                            inline=False)
         await ctx.message.author.send(embed=embed)
         if ctx.guild is not None:
             return await ctx.message.delete()
