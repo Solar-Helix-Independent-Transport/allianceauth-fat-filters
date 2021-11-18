@@ -50,8 +50,8 @@ class FatCog(commands.Cog):
                         value=fat_count, 
                         inline=False)
         if fat_count > 0:
-            embed.add_field(name="Ships",
-                            value=", ".join(ships), 
+            embed.add_field(name="Recent Ships",
+                            value=", ".join(ships[:10]), 
                             inline=False)
             embed.add_field(name="Last Fleet",
                             value=last_message, 
