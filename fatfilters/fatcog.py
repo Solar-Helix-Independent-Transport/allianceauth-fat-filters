@@ -38,7 +38,8 @@ class FatCog(commands.Cog):
             .order_by("afatlink__afattime")
         fat_count = fats.count()
         if fat_count > 0:
-            ships = fats.values_list('shiptype', flat=True)
+            ships = set(fats.values_list('shiptype', flat=True))
+            ships = list(ships)[:10]
             last_fleet = fats.first().afatlink
             last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
             last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
@@ -51,7 +52,7 @@ class FatCog(commands.Cog):
                         inline=False)
         if fat_count > 0:
             embed.add_field(name="Recent Ships",
-                            value=", ".join(ships[:10]), 
+                            value=", ".join(ships), 
                             inline=False)
             embed.add_field(name="Last Fleet",
                             value=last_message, 
