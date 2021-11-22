@@ -35,7 +35,7 @@ class FatCog(commands.Cog):
         user = DiscordUser.objects.get(uid=ctx.message.author.id).user
         character_list = user.character_ownerships.all()
         fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
-            .order_by("afatlink__afattime")
+            .order_by("-afatlink__afattime")
         fat_count = fats.count()
         if fat_count > 0:
             ships = set(fats.values_list('shiptype', flat=True))
