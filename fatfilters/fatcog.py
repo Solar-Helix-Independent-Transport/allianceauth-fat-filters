@@ -90,7 +90,7 @@ class Fats(commands.Cog):
         embed = Embed()
         embed.title = "Recent FAT Activity"
         gap = "          "
-        leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1])}.items()]
+        leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1], reverse=True)}.items()]
         message = "\n".join(leaderboard)
         embed.description = f'```Fats      Main\n{message}```'
 
