@@ -89,9 +89,10 @@ class Fats(commands.Cog):
                 mains[f.character.character_ownership.user.profile.main_character.character_name] += 1
         embed = Embed()
         embed.title = "Recent FAT Activity"
-        leaderboard = [f"{c}\t\t\t {t}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1])}.items()]
+        gap = "          "
+        leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1], reverse=False)}.items()]
         message = "\n".join(leaderboard)
-        embed.description = f'```{message}```'
+        embed.description = f'```Fats      Main\n{message}```'
 
         embed.add_field(name="Last 3 Months",
                         value=fat_count, 
