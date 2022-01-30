@@ -6,6 +6,7 @@ from discord.colour import Color
 # AA Contexts
 from django.conf import settings
 from django.contrib.auth.models import User, Group
+from django.db.models import Count
 from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 from allianceauth.eveonline.models import EveCharacter
@@ -77,22 +78,19 @@ class Fats(commands.Cog):
         character_list = EveCharacter.objects.filter(character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
 
         fats = AFat.objects.filter(character__in=character_list, afatlink__afattime__gte=start_time) \
-            .order_by("-afatlink__afattime")
+            .values("character__character_ownership__user__profile__main_character__character_name") \
+            .annotate(Count(f'id'))
         fat_count = fats.count()
         mains = {}
         if fat_count > 0:
-            last_fleet = fats.first().afatlink
-            last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
             for f in fats:
-                if f.character.character_ownership.user.profile.main_character.character_name not in mains:
-                    mains[f.character.character_ownership.user.profile.main_character.character_name] = 0
-                mains[f.character.character_ownership.user.profile.main_character.character_name] += 1
+                mains[f['character__character_ownership__user__profile__main_character__character_name']] = f['id__count']
         embed = Embed()
-        embed.title = "Recent FAT Activity"
+        embed.title = f"{user.corporation_ticker} FAT Activity"
         gap = "          "
         leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1], reverse=True)}.items()]
         message = "\n".join(leaderboard)
-        embed.description = f'```Fats      Main\n{message}```'
+        embed.description = f'Data from last 3 months.\n```Fats      Main\n{message}```'
 
         embed.add_field(name="Last 3 Months",
                         value=fat_count, 
@@ -100,6 +98,7 @@ class Fats(commands.Cog):
         await ctx.message.author.send(embed=embed)
         if ctx.guild is not None:
             return await ctx.message.delete()
+
 
 def setup(bot):
     bot.add_cog(Fats(bot))
