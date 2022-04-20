@@ -108,7 +108,7 @@ class Fats(commands.Cog):
         Gets Auth/audit data about a character 
         Input: a Eve Character Name
         """
-        input_name = ctx.message.content[6:]
+        input_name = ctx.message.content[7:]
 
         embed = Embed(
             title="Account Audit {character_name}".format(
