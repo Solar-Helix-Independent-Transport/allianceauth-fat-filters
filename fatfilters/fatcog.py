@@ -108,7 +108,7 @@ class Fats(commands.Cog):
         Gets Auth/audit data about a character 
         Input: a Eve Character Name
         """
-        input_name = ctx.message.content[7:]
+        input_name = ctx.message.content[7:].strip()
 
         embed = Embed(
             title="Account Audit {character_name}".format(
@@ -122,6 +122,8 @@ class Fats(commands.Cog):
                 main = char.character_ownership.user.profile.main_character
                 state = char.character_ownership.user.profile.state.name
                 groups = char.character_ownership.user.groups.all().values_list('name', flat=True)
+                alts = char.character_ownership.user.character_ownerships.all().select_related('character').values_list(
+                    'character__character_name', 'character__corporation_ticker', 'character__character_id', 'character__corporation_id')
 
                 try:
                     discord_string = "<@{}>".format(
@@ -147,7 +149,8 @@ class Fats(commands.Cog):
                                 inline=False)
                 if fat_count > 0:
                     last_message +=f"\n Recent Ships: {', '.join(ships)}"
-                embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{}".format(
+
+                embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{4}".format(
                     char,
                     main,
                     main.corporation_ticker,
