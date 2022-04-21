@@ -13,7 +13,7 @@ from allianceauth.eveonline.models import EveCharacter
 # AA-Discordbot
 from aadiscordbot.cogs.utils.decorators import message_in_channels, sender_has_any_perm, sender_has_perm
 from allianceauth.services.modules.discord.models import DiscordUser
-
+from aadiscordbot.app_settings import get_site_url
 from afat.models import AFat
 from corptools.models import FullyLoadedFilter
 import re
@@ -129,7 +129,7 @@ class Fats(commands.Cog):
                 if ghosts.exists():
                     _g = []
                     for g in ghosts:
-                        _g.append(g.character.character_name)
+                        _g.append(g.character_name)
                     ghost = "**Ghosts:** {}".format(
                         ", ".join(_g)
                     )
@@ -159,14 +159,15 @@ class Fats(commands.Cog):
                                 inline=False)
                 if fat_count > 0:
                     last_message +=f"\n**Recent Ships:** {', '.join(ships)}"
-
-                embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{4}\n{5}".format(
+                url = "[Auth Audit Link]({})".format(get_site_url() + "/audit/r/" + str(main.character_id) + "/")
+                embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{4}\n{5}\n{6}".format(
                     char,
                     main,
                     main.corporation_ticker,
                     state,
                     last_message,
-                    ghost
+                    ghost,
+                    url
                 )
 
                 alt_list = ["[{}](https://evewho.com/character/{}) *[ [{}](https://evewho.com/corporation/{}) ]*".format(
