@@ -129,7 +129,7 @@ class Fats(commands.Cog):
                 if ghosts.exists():
                     _g = []
                     for g in ghosts:
-                        _g.append(g.character_name)
+                        _g.append(g.character.character_name)
                     ghost = "**Ghosts:** {}".format(
                         ", ".join(_g)
                     )
