@@ -124,7 +124,17 @@ class Fats(commands.Cog):
                 groups = char.character_ownership.user.groups.all().values_list('name', flat=True)
                 alts = char.character_ownership.user.character_ownerships.all().select_related('character').values_list(
                     'character__character_name', 'character__corporation_ticker', 'character__character_id', 'character__corporation_id')
-
+                ghosts = char.character_ownership.user.character_ownerships.all().select_related('character').filter(character__corporation_id=98534707)
+                ghost = ""
+                if ghosts.exists():
+                    _g = []
+                    for g in ghosts:
+                        _g.append(g.character_name)
+                    ghost = "**Ghosts:** {}".format(
+                        ", ".join(_g)
+                    )
+                else:
+                    ghost = "**No Ghost Found!!!**"
                 try:
                     discord_string = "<@{}>".format(
                         char.character_ownership.user.discord.uid)
@@ -137,25 +147,26 @@ class Fats(commands.Cog):
                 fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
                     .order_by("-afatlink__afattime")
                 fat_count = fats.count()
-                last_message = ""
+                last_message = "**No Fleet Activity!!**"
                 if fat_count > 0:
                     ships = set(fats.values_list('shiptype', flat=True))
                     ships = list(ships)[:10]
                     last_fleet = fats.first().afatlink
                     last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
-                    last_message = f"Last Fleet: {last_fleet.character}: {last_fleet.fleet} ({last_date})"
+                    last_message = f"**Last Fleet:** {last_fleet.character}: {last_fleet.fleet} ({last_date})"
                 embed.add_field(name="Fats (3 Month)",
                                 value=fat_count, 
                                 inline=False)
                 if fat_count > 0:
-                    last_message +=f"\n Recent Ships: {', '.join(ships)}"
+                    last_message +=f"\n**Recent Ships:** {', '.join(ships)}"
 
-                embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{4}".format(
+                embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{4}\n{5}".format(
                     char,
                     main,
                     main.corporation_ticker,
                     state,
-                    last_message
+                    last_message,
+                    ghost
                 )
 
                 alt_list = ["[{}](https://evewho.com/character/{}) *[ [{}](https://evewho.com/corporation/{}) ]*".format(
