@@ -1,5 +1,6 @@
 # Cog Stuff
 from datetime import timedelta
+from discord import AutocompleteContext, option
 from discord.ext import commands
 from discord.embeds import Embed
 from discord.colour import Color
@@ -11,7 +12,7 @@ from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 from allianceauth.eveonline.models import EveCharacter
 # AA-Discordbot
-from aadiscordbot.cogs.utils.decorators import message_in_channels, sender_has_any_perm, sender_has_perm
+from aadiscordbot.cogs.utils.decorators import has_any_perm, in_channels, message_in_channels, sender_has_any_perm, sender_has_perm
 from allianceauth.services.modules.discord.models import DiscordUser
 from aadiscordbot.app_settings import get_site_url
 from afat.models import AFat
@@ -99,17 +100,7 @@ class Fats(commands.Cog):
         if ctx.guild is not None:
             return await ctx.message.delete()
 
-
-    @commands.command(pass_context=True, hidden=True)
-    @sender_has_any_perm(['corputils.view_alliance_corpstats', 'corpstats.view_alliance_corpstats'])
-    @message_in_channels(settings.ADMIN_DISCORD_BOT_CHANNELS)
-    async def audit(self, ctx):
-        """
-        Gets Auth/audit data about a character 
-        Input: a Eve Character Name
-        """
-        input_name = ctx.message.content[7:].strip()
-
+    def audit_embed(self, input_name):
         embed = Embed(
             title="Account Audit {character_name}".format(
                 character_name=input_name)
@@ -197,7 +188,7 @@ class Fats(commands.Cog):
                     name="Discord Link", value=discord_string, inline=False
                 )
 
-                return await ctx.send(embed=embed)
+                return embed
             except ObjectDoesNotExist:
                 users = char.ownership_records.values('user')
                 users = User.objects.filter(id__in=users)
@@ -234,7 +225,7 @@ class Fats(commands.Cog):
                         )
                         break
 
-                return await ctx.send(embed=embed)
+                return embed
 
         except EveCharacter.DoesNotExist:
             embed.colour = Color.red()
@@ -243,7 +234,39 @@ class Fats(commands.Cog):
                 "Character **{character_name}** does not exist in our Auth system"
             ).format(character_name=input_name)
 
-            return await ctx.send(embed=embed)
+            return embed
+
+
+    @commands.command(pass_context=True, hidden=True)
+    @sender_has_any_perm(['corputils.view_alliance_corpstats', 'corpstats.view_alliance_corpstats'])
+    @message_in_channels(settings.ADMIN_DISCORD_BOT_CHANNELS)
+    async def audit(self, ctx):
+        """
+        Gets Auth/audit data about a character 
+        Input: a Eve Character Name
+        """
+        return await ctx.send(embed=self.audit_embed(ctx.message.content[7:].strip()))
+
+    async def search_characters(ctx: AutocompleteContext):
+        """Returns a list of colors that begin with the characters entered so far."""
+        return list(EveCharacter.objects.filter(character_name__icontains=ctx.value).values_list('character_name', flat=True)[:10])
+
+
+    @commands.slash_command(name='audit', guild_ids=[int(settings.DISCORD_GUILD_ID)])
+    @option("character", description="Search for a Character!", autocomplete=search_characters)
+    async def slash_audit(
+        self,
+        ctx,
+        character: str,
+    ):
+        try:
+            in_channels(ctx.channel.id, settings.ADMIN_DISCORD_BOT_CHANNELS)
+            has_any_perm(ctx.author.id, [
+                         'corputils.view_alliance_corpstats', 'corpstats.view_alliance_corpstats'])
+            await ctx.defer()
+            return await ctx.respond(embed=self.audit_embed(character))
+        except commands.MissingPermissions as e:
+            return await ctx.respond(e.missing_permissions[0], ephemeral=True)
 
 
 def setup(bot):
