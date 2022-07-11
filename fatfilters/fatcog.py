@@ -31,74 +31,81 @@ class Fats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(pass_context=True)
+    @commands.slash_command(name='me', guild_ids=[int(settings.DISCORD_GUILD_ID)])
     async def me(self, ctx):
         """
         Show your users basic stats from the FAT module
         """
-        start_time = timezone.now() - timedelta(days=90)
-        user = DiscordUser.objects.get(uid=ctx.message.author.id).user
-        character_list = user.character_ownerships.all()
-        fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
-            .order_by("-afatlink__afattime")
-        fat_count = fats.count()
-        if fat_count > 0:
-            ships = set(fats.values_list('shiptype', flat=True))
-            ships = list(ships)[:10]
-            last_fleet = fats.first().afatlink
-            last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
-            last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
-        embed = Embed()
-        embed.title = "Recent FAT Activity"
-        embed.description = f"Plese check auth for more info!"
+        try:
+            await ctx.defer(ephemeral=True)
+            start_time = timezone.now() - timedelta(days=90)
+            user = DiscordUser.objects.get(uid=ctx.author.id).user
+            character_list = user.character_ownerships.all()
+            fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
+                .order_by("-afatlink__afattime")
+            fat_count = fats.count()
+            if fat_count > 0:
+                ships = set(fats.values_list('shiptype', flat=True))
+                ships = list(ships)[:10]
+                last_fleet = fats.first().afatlink
+                last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
+                last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
+            embed = Embed()
+            embed.title = "Recent FAT Activity"
+            embed.description = f"Plese check auth for more info!"
 
-        embed.add_field(name="Last 3 Months",
-                        value=fat_count, 
-                        inline=False)
-        if fat_count > 0:
-            embed.add_field(name="Recent Ships",
-                            value=", ".join(ships), 
+            embed.add_field(name="Last 3 Months",
+                            value=fat_count, 
                             inline=False)
-            embed.add_field(name="Last Fleet",
-                            value=last_message, 
-                            inline=False)
-        await ctx.message.author.send(embed=embed)
-        if ctx.guild is not None:
-            return await ctx.message.delete()
+            if fat_count > 0:
+                embed.add_field(name="Recent Ships",
+                                value=", ".join(ships), 
+                                inline=False)
+                embed.add_field(name="Last Fleet",
+                                value=last_message, 
+                                inline=False)
+            await ctx.respond(embed=embed, ephemeral=True)
+        except commands.MissingPermissions as e:
+            return await ctx.respond(e.missing_permissions[0], ephemeral=True)
 
-    @commands.command(pass_context=True)
-    @sender_has_perm("afat.stats_corporation_own")
+
+    @commands.slash_command(name='corp', guild_ids=[int(settings.DISCORD_GUILD_ID)])
     async def corp(self, ctx):
         """
         Show your corps basic stats from the FAT module
         """
+        try:
+            has_any_perm(ctx.author.id, [
+                            'afat.stats_corporation_own'])
+            await ctx.defer(ephemeral=True)
+            start_time = timezone.now() - timedelta(days=90)
+            user = DiscordUser.objects.get(uid=ctx.author.id).user.profile.main_character
 
-        start_time = timezone.now() - timedelta(days=90)
-        user = DiscordUser.objects.get(uid=ctx.message.author.id).user.profile.main_character
+            character_list = EveCharacter.objects.filter(
+                character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
 
-        character_list = EveCharacter.objects.filter(character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
+            fats = AFat.objects.filter(character__in=character_list, afatlink__afattime__gte=start_time) \
+                .values("character__character_ownership__user__profile__main_character__character_name") \
+                .annotate(Count(f'id'))
+            fat_count = fats.count()
+            mains = {}
+            if fat_count > 0:
+                for f in fats:
+                    mains[f['character__character_ownership__user__profile__main_character__character_name']] = f['id__count']
+            embed = Embed()
+            embed.title = f"{user.corporation_ticker} FAT Activity"
+            gap = "          "
+            leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1], reverse=True)}.items()]
+            message = "\n".join(leaderboard)
+            embed.description = f'Data from last 3 months.\n```Fats      Main\n{message}```'
 
-        fats = AFat.objects.filter(character__in=character_list, afatlink__afattime__gte=start_time) \
-            .values("character__character_ownership__user__profile__main_character__character_name") \
-            .annotate(Count(f'id'))
-        fat_count = fats.count()
-        mains = {}
-        if fat_count > 0:
-            for f in fats:
-                mains[f['character__character_ownership__user__profile__main_character__character_name']] = f['id__count']
-        embed = Embed()
-        embed.title = f"{user.corporation_ticker} FAT Activity"
-        gap = "          "
-        leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1], reverse=True)}.items()]
-        message = "\n".join(leaderboard)
-        embed.description = f'Data from last 3 months.\n```Fats      Main\n{message}```'
+            embed.add_field(name="Last 3 Months",
+                            value=fat_count, 
+                            inline=False)
+            await ctx.respond(embed=embed, ephemeral=True)
+        except commands.MissingPermissions as e:
+            return await ctx.respond(e.missing_permissions[0], ephemeral=True)
 
-        embed.add_field(name="Last 3 Months",
-                        value=fat_count, 
-                        inline=False)
-        await ctx.message.author.send(embed=embed)
-        if ctx.guild is not None:
-            return await ctx.message.delete()
 
     def audit_embed(self, input_name):
         embed = Embed(
