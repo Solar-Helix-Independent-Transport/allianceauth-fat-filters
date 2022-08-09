@@ -140,18 +140,21 @@ class Fats(commands.Cog):
                         char.character_ownership.user.discord.uid)
 
                     user = get(self.bot.get_all_members(), id=char.character_ownership.user.discord.uid)
-                    if user:
-                        url = user.avatar.url
-                        is_bot = user.bot
-                        created_at = user.created_at
-                        desktop_status = user.desktop_status.name
-                        mobile_status = user.mobile_status.name
-                        web_status = user.web_status.name
-                        status = user.status.name
-                        name = f"**{user.display_name}** `{user.name}@{user.discriminator}` <@{user.id}>"
-                        stat_str = f"**Status:** {status} (D: {desktop_status}, M: {mobile_status}, W: {web_status}) B:{is_bot}"
-                        date_time = created_at.strftime("%Y/%m/%d %H:%M:%S")
-                        discord_string = f"{name}\n{stat_str}\n**User Created:** {date_time}"
+                    try:
+                        if user:
+                        #url = user.avatar.url
+                            is_bot = user.bot
+                            created_at = user.created_at
+                            desktop_status = user.desktop_status.name
+                            mobile_status = user.mobile_status.name
+                            web_status = user.web_status.name
+                            status = user.status.name
+                            name = f"**{user.display_name}** `{user.name}@{user.discriminator}` <@{user.id}>"
+                            stat_str = f"**Status:** {status} (D: {desktop_status}, M: {mobile_status}, W: {web_status}) B:{is_bot}"
+                            date_time = created_at.strftime("%Y/%m/%d %H:%M:%S")
+                            discord_string = f"{name}\n{stat_str}\n**User Created:** {date_time}"
+                    except Exception as e:
+                        logger.error(e)
                 except Exception as e:
                     logger.error(e)
                     discord_string = "unknown"
