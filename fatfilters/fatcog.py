@@ -139,7 +139,7 @@ class Fats(commands.Cog):
                     discord_string = "<@{}>".format(
                         char.character_ownership.user.discord.uid)
 
-                    user = get(self.bot.get_all_members(), id=318309023478972417)
+                    user = get(self.bot.get_all_members(), id=char.character_ownership.user.discord.uid)
                     if user:
                         url = user.avatar.url
                         is_bot = user.bot
