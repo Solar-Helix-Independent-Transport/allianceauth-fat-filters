@@ -18,6 +18,7 @@ from aadiscordbot.app_settings import get_site_url
 from afat.models import AFat
 from corptools.models import FullyLoadedFilter
 import re
+from discord.utils import get
 
 import logging
 
@@ -124,6 +125,7 @@ class Fats(commands.Cog):
                     'character__character_name', 'character__corporation_ticker', 'character__character_id', 'character__corporation_id')
                 ghosts = char.character_ownership.user.character_ownerships.all().select_related('character').filter(character__corporation_id=98534707)
                 ghost = ""
+
                 if ghosts.exists():
                     _g = []
                     for g in ghosts:
@@ -136,6 +138,20 @@ class Fats(commands.Cog):
                 try:
                     discord_string = "<@{}>".format(
                         char.character_ownership.user.discord.uid)
+
+                    user = get(self.bot.get_all_members(), id=318309023478972417)
+                    if user:
+                        url = user.avatar.url
+                        is_bot = user.bot
+                        created_at = user.created_at
+                        desktop_status = user.desktop_status.name
+                        mobile_status = user.mobile_status.name
+                        web_status = user.web_status.name
+                        status = user.status.name
+                        name = f"**{user.display_name}** `{user.name}@{user.discriminator}` <@{user.id}>"
+                        stat_str = f"**Status:** {status} (D: {desktop_status}, M: {mobile_status}, W: {web_status}) B:{is_bot}"
+                        date_time = created_at.strftime("%Y/%m/%d %H:%M:%S")
+                        discord_string = f"{name}\n{stat_str}\n**User Created:** {date_time}"
                 except Exception as e:
                     logger.error(e)
                     discord_string = "unknown"
@@ -190,6 +206,7 @@ class Fats(commands.Cog):
                     embed.add_field(
                         name="Groups", value=", ".join(groups), inline=False
                     )
+
 
                 embed.add_field(
                     name="Discord Link", value=discord_string, inline=False
@@ -275,6 +292,8 @@ class Fats(commands.Cog):
         except commands.MissingPermissions as e:
             return await ctx.respond(e.missing_permissions[0], ephemeral=True)
 
+
+                    
 
 def setup(bot):
     bot.add_cog(Fats(bot))
