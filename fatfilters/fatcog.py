@@ -32,14 +32,16 @@ class Fats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+
     @commands.slash_command(name='me', guild_ids=[int(settings.DISCORD_GUILD_ID)])
-    async def me(self, ctx):
+    @option("months", description="Number of months to look back!", min_value=1, max_value=6, default=3)
+    async def me(self, ctx, months: int):
         """
         Show your users basic stats from the FAT module
         """
         try:
             await ctx.defer(ephemeral=True)
-            start_time = timezone.now() - timedelta(days=90)
+            start_time = timezone.now() - timedelta(days=months*30)
             user = DiscordUser.objects.get(uid=ctx.author.id).user
             character_list = user.character_ownerships.all()
             fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
@@ -55,7 +57,7 @@ class Fats(commands.Cog):
             embed.title = "Recent FAT Activity"
             embed.description = f"Plese check auth for more info!"
 
-            embed.add_field(name="Last 3 Months",
+            embed.add_field(name=f"Last {months} Months",
                             value=fat_count, 
                             inline=False)
             if fat_count > 0:
@@ -71,7 +73,8 @@ class Fats(commands.Cog):
 
 
     @commands.slash_command(name='corp', guild_ids=[int(settings.DISCORD_GUILD_ID)])
-    async def corp(self, ctx):
+    @option("months", description="Number of months to look back!", min_value=1, max_value=6, default=3)
+    async def corp(self, ctx, months: int):
         """
         Show your corps basic stats from the FAT module
         """
@@ -79,7 +82,7 @@ class Fats(commands.Cog):
             has_any_perm(ctx.author.id, [
                             'afat.stats_corporation_own'])
             await ctx.defer(ephemeral=True)
-            start_time = timezone.now() - timedelta(days=90)
+            start_time = timezone.now() - timedelta(days=months*30)
             user = DiscordUser.objects.get(uid=ctx.author.id).user.profile.main_character
 
             character_list = EveCharacter.objects.filter(
@@ -98,15 +101,14 @@ class Fats(commands.Cog):
             gap = "          "
             leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1], reverse=True)}.items()]
             message = "\n".join(leaderboard)
-            embed.description = f'Data from last 3 months.\n```Fats      Main\n{message}```'
+            embed.description = f'Data from last {months} months.\n```Fats      Main\n{message}```'
 
-            embed.add_field(name="Last 3 Months",
-                            value=fat_count, 
+            embed.add_field(name=f"Last {months} Months",
+                            value=fat_count,
                             inline=False)
             await ctx.respond(embed=embed, ephemeral=True)
         except commands.MissingPermissions as e:
             return await ctx.respond(e.missing_permissions[0], ephemeral=True)
-
 
     def audit_embed(self, input_name):
         embed = Embed(
@@ -209,7 +211,6 @@ class Fats(commands.Cog):
                     embed.add_field(
                         name="Groups", value=", ".join(groups), inline=False
                     )
-
 
                 embed.add_field(
                     name="Discord Link", value=discord_string, inline=False
