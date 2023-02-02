@@ -1,3 +1,3 @@
 default_app_config = 'fatfilters.apps.FatFiltersConfig'
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
