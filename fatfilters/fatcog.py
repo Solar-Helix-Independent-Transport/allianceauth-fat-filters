@@ -34,7 +34,7 @@ class Fats(commands.Cog):
 
 
     @commands.slash_command(name='me', guild_ids=[int(settings.DISCORD_GUILD_ID)])
-    @option("months", description="Number of months to look back!", min_value=1, max_value=6, default=3)
+    @option("months", description="Number of months to look back!", min_value=1, max_value=12, default=3)
     async def me(self, ctx, months: int):
         """
         Show your users basic stats from the FAT module
