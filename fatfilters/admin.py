@@ -5,7 +5,7 @@ from .models import FATInTimePeriod
 @admin.register(FATInTimePeriod)
 class FATAdmin(admin.ModelAdmin):
     list_display = ("name", "description", "days", "fats_needed")
-    filter_horizontal = ('ship_names',)
+    filter_horizontal = ('ship_names','fleet_type_filter')
 
     select_related=True
 
