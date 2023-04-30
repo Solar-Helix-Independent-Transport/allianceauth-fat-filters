@@ -207,10 +207,10 @@ class Fats(commands.Cog):
                         name="Characters Missing From Audit", value=loaded[char.character_ownership.user.id]["message"], inline=False
                     )
 
-                if len(groups) > 0:
-                    embed.add_field(
-                        name="Groups", value=", ".join(groups), inline=False
-                    )
+                # if len(groups) > 0:
+                #     embed.add_field(
+                #         name="Groups", value=", ".join(groups), inline=False
+                #     )
 
                 embed.add_field(
                     name="Discord Link", value=discord_string, inline=False
