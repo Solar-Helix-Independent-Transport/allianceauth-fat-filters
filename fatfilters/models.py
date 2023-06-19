@@ -54,6 +54,7 @@ class FATInTimePeriod(BaseFilter):
         except Exception as e:
             return False
 
+
     def audit_filter(self, users): # bulk pass fail
         character_list = CharacterOwnership.objects.filter(user__in=users)
         start_time = timezone.now() - timedelta(days=self.days)
@@ -73,7 +74,7 @@ class FATInTimePeriod(BaseFilter):
         for f in fats:
             users[f.character.character_ownership.user.pk].append(f.id)
 
-        output = defaultdict(lambda: {"message": "0", "check": False})
+        output = defaultdict(lambda: {"message": 0, "check": False})
         for u, fat_list in users.items():
             pass_fail = False
             if len(fat_list) > self.fats_needed:
