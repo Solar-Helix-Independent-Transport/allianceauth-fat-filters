@@ -2,9 +2,8 @@ from datetime import timedelta
 from collections import defaultdict
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.base import Model
 from django.utils import timezone
-from afat.models import AFat, ManualAFat, AFatLinkType
+from afat.models import Fat, FleetType
 from allianceauth.authentication.models import CharacterOwnership
 from corptools.models import EveItemType
 
@@ -29,7 +28,7 @@ class FATInTimePeriod(BaseFilter):
     days = models.IntegerField(default=30)
     fats_needed = models.IntegerField(default=10)
 
-    fleet_type_filter = models.ManyToManyField(AFatLinkType, blank=True)
+    fleet_type_filter = models.ManyToManyField(FleetType, blank=True)
 
     ship_names = models.ManyToManyField(EveItemType, blank=True, limit_choices_to={'group__category_id': 6})
 
@@ -37,7 +36,7 @@ class FATInTimePeriod(BaseFilter):
         try:
             start_time = timezone.now() - timedelta(days=self.days)
             character_list = user.character_ownerships.all().select_related('character')
-            fat_count = AFat.objects.filter(character__character_id__in=character_list, afatlink__afattime__gte=start_time)
+            fat_count = Fat.objects.filter(character__character_id__in=character_list, fatlink__created__gte=start_time)
             ship_names = self.ship_names.all()
             fleet_types = self.ship_names.all()
             
@@ -45,7 +44,7 @@ class FATInTimePeriod(BaseFilter):
                 fat_count = fat_count.filter(ship_names__in=ship_names.values_list('name', flat=True))
 
             if fleet_types.count() > 0:
-                fat_count = fat_count.filter(afatlink__link_type__in=fleet_types)
+                fat_count = fat_count.filter(fatlink__link_type__in=fleet_types)
 
             if fat_count.count() > self.fats_needed:
                 return True
@@ -61,14 +60,14 @@ class FATInTimePeriod(BaseFilter):
         ship_names = self.ship_names.all()
         fleet_types = self.fleet_type_filter.all()
 
-        fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
+        fats = Fat.objects.filter(character__in=character_list.values("character"), fatlink__created__gte=start_time) \
                 .select_related('character__character_ownership__user', 'character')
 
         if ship_names.count() > 0:
             fats = fats.filter(shiptype__in=ship_names.values_list('name', flat=True))
 
         if fleet_types.count() > 0:
-            fats = fats.filter(afatlink__link_type__in=fleet_types)
+            fats = fats.filter(fatlink__link_type__in=fleet_types)
 
         users = defaultdict(list)
         for f in fats:

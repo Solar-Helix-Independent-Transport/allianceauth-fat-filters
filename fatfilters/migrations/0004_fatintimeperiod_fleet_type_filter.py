@@ -10,6 +10,10 @@ class Migration(migrations.Migration):
         ('fatfilters', '0003_alter_fatintimeperiod_ship_names'),
     ]
 
+    run_before = [
+        ('afat', '0023_the_big_rename'),
+    ] 
+
     operations = [
         migrations.AddField(
             model_name='fatintimeperiod',

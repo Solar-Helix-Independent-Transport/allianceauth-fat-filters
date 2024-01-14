@@ -15,7 +15,7 @@ from allianceauth.eveonline.models import EveCharacter
 from aadiscordbot.cogs.utils.decorators import has_any_perm, in_channels, message_in_channels, sender_has_any_perm, sender_has_perm
 from allianceauth.services.modules.discord.models import DiscordUser
 from aadiscordbot.app_settings import get_site_url
-from afat.models import AFat
+from afat.models import Fat
 from corptools.models import FullyLoadedFilter
 import re
 from discord.utils import get
@@ -44,14 +44,14 @@ class Fats(commands.Cog):
             start_time = timezone.now() - timedelta(days=months*30)
             user = DiscordUser.objects.get(uid=ctx.author.id).user
             character_list = user.character_ownerships.all()
-            fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
-                .order_by("-afatlink__afattime")
+            fats = Fat.objects.filter(character__in=character_list.values("character"), fatlink__created__gte=start_time) \
+                .order_by("-fatlink__created")
             fat_count = fats.count()
             if fat_count > 0:
                 ships = set(fats.values_list('shiptype', flat=True))
                 ships = list(ships)[:10]
-                last_fleet = fats.first().afatlink
-                last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
+                last_fleet = fats.first().fatlink
+                last_date = last_fleet.created.strftime("%Y-%m-%d %H:%M")
                 last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
             embed = Embed()
             embed.title = "Recent FAT Activity"
@@ -93,7 +93,7 @@ class Fats(commands.Cog):
             character_list = EveCharacter.objects.filter(
                 character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
 
-            fats = AFat.objects.filter(character__in=character_list, afatlink__afattime__gte=start_time) \
+            fats = Fat.objects.filter(character__in=character_list, fatlink__created__gte=start_time) \
                 .values("character__character_ownership__user__profile__main_character__character_name") \
                 .annotate(Count(f'id'))
             fat_count = fats.count()
@@ -168,15 +168,15 @@ class Fats(commands.Cog):
 
                 start_time = timezone.now() - timedelta(days=90)
                 character_list = char.character_ownership.user.character_ownerships.all()
-                fats = AFat.objects.filter(character__in=character_list.values("character"), afatlink__afattime__gte=start_time) \
-                    .order_by("-afatlink__afattime")
+                fats = Fat.objects.filter(character__in=character_list.values("character"), fatlink__created__gte=start_time) \
+                    .order_by("-fatlink__created")
                 fat_count = fats.count()
                 last_message = "**No Fleet Activity!!**"
                 if fat_count > 0:
                     ships = set(fats.values_list('shiptype', flat=True))
                     ships = list(ships)[:10]
-                    last_fleet = fats.first().afatlink
-                    last_date = last_fleet.afattime.strftime("%Y-%m-%d %H:%M")
+                    last_fleet = fats.first().fatlink
+                    last_date = last_fleet.created.strftime("%Y-%m-%d %H:%M")
                     last_message = f"**Last Fleet:** {last_fleet.character}: {last_fleet.fleet} ({last_date})"
                 embed.add_field(name="Fats (3 Month)",
                                 value=fat_count, 
