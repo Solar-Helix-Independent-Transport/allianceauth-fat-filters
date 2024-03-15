@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import FATInTimePeriod
+from .models import FATInTimePeriod, FATCogConfiguration
 # Register your models here.
 
 @admin.register(FATInTimePeriod)
@@ -10,3 +10,7 @@ class FATAdmin(admin.ModelAdmin):
     select_related=True
 
 
+@admin.register(FATCogConfiguration)
+class FATCogAdmin(admin.ModelAdmin):
+    filter_horizontal = ('fleet_type_filter',)
+    select_related=True

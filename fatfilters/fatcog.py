@@ -19,7 +19,7 @@ from afat.models import Fat
 from corptools.models import FullyLoadedFilter
 import re
 from discord.utils import get
-
+from .models import FATCogConfiguration
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,8 +44,14 @@ class Fats(commands.Cog):
             start_time = timezone.now() - timedelta(days=months*30)
             user = DiscordUser.objects.get(uid=ctx.author.id).user
             character_list = user.character_ownerships.all()
-            fats = Fat.objects.filter(character__in=character_list.values("character"), fatlink__created__gte=start_time) \
-                .order_by("-fatlink__created")
+            fat_config = FATCogConfiguration.get_solo()
+            fat_types = fat_config.fleet_type_filter.all()
+            fats = Fat.objects.filter(
+                character__in=character_list.values("character"),
+                fatlink__created__gte=start_time,
+                fatlink__link_type__in=fat_types,
+                fatlink__link_type__isnull=False
+            ).order_by("-fatlink__created")
             fat_count = fats.count()
             if fat_count > 0:
                 ships = set(fats.values_list('shiptype', flat=True))
@@ -92,10 +98,17 @@ class Fats(commands.Cog):
 
             character_list = EveCharacter.objects.filter(
                 character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
+            fat_config = FATCogConfiguration.get_solo()
+            fat_types = fat_config.fleet_type_filter.all()
 
-            fats = Fat.objects.filter(character__in=character_list, fatlink__created__gte=start_time) \
-                .values("character__character_ownership__user__profile__main_character__character_name") \
-                .annotate(Count(f'id'))
+            fats = Fat.objects.filter(
+                character__in=character_list,
+                fatlink__created__gte=start_time,
+                fatlink__link_type__in=fat_types,
+                fatlink__link_type__isnull=False
+            ).values(
+                "character__character_ownership__user__profile__main_character__character_name"
+            ).annotate(Count(f'id'))
             fat_count = fats.count()
             mains = {}
             if fat_count > 0:

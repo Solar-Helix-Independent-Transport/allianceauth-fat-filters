@@ -6,6 +6,7 @@ from django.utils import timezone
 from afat.models import Fat, FleetType
 from allianceauth.authentication.models import CharacterOwnership
 from corptools.models import EveItemType
+from solo.models import SingletonModel
 
 class BaseFilter(models.Model):
     name = models.CharField(max_length=500) # This is the filters name shown to the admin
@@ -80,3 +81,8 @@ class FATInTimePeriod(BaseFilter):
                 pass_fail = True
             output[u] = {"message": len(fat_list), "check": pass_fail}
         return output
+
+
+class FATCogConfiguration(SingletonModel):
+    fleet_type_filter = models.ManyToManyField(FleetType, blank=True)
+
