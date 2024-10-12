@@ -285,7 +285,13 @@ class Fats(commands.Cog):
 
 
     @commands.command(pass_context=True, hidden=True)
-    @sender_has_any_perm(['corputils.view_alliance_corpstats', 'corpstats.view_alliance_corpstats'])
+    @sender_has_any_perm(
+        [
+            'corputils.view_alliance_corpstats',
+            'corpstats.view_alliance_corpstats',
+            'aadiscordbot.member_command_access'
+        ]
+    )
     @message_in_channels(settings.ADMIN_DISCORD_BOT_CHANNELS)
     async def audit(self, ctx):
         """
@@ -304,8 +310,14 @@ class Fats(commands.Cog):
     ):
         try:
             in_channels(ctx.channel.id, settings.ADMIN_DISCORD_BOT_CHANNELS)
-            has_any_perm(ctx.author.id, [
-                         'corputils.view_alliance_corpstats', 'corpstats.view_alliance_corpstats'])
+            has_any_perm(
+                ctx.author.id, 
+                [
+                    'corputils.view_alliance_corpstats',
+                    'corpstats.view_alliance_corpstats',
+                    'aadiscordbot.member_command_access'
+                ]
+            )
             await ctx.defer()
             return await ctx.respond(embed=self.audit_embed(character))
         except commands.MissingPermissions as e:
