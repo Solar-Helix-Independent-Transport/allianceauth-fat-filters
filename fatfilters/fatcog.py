@@ -14,7 +14,9 @@ from allianceauth.eveonline.models import EveCharacter
 # AA-Discordbot
 from aadiscordbot.cogs.utils.decorators import has_any_perm, in_channels, message_in_channels, sender_has_any_perm, sender_has_perm
 from allianceauth.services.modules.discord.models import DiscordUser
-from aadiscordbot.app_settings import get_site_url
+from aadiscordbot.app_settings import get_site_url, get_all_servers
+from aadiscordbot.cogs.utils.autocompletes import search_characters
+
 from afat.models import Fat
 from corptools.models import FullyLoadedFilter
 import re
@@ -33,7 +35,7 @@ class Fats(commands.Cog):
         self.bot = bot
 
 
-    @commands.slash_command(name='me', guild_ids=[int(settings.DISCORD_GUILD_ID)])
+    @commands.slash_command(name='me', guild_ids=get_all_servers())
     @option("months", description="Number of months to look back!", min_value=1, max_value=12, default=3)
     async def me(self, ctx, months: int):
         """
@@ -78,7 +80,7 @@ class Fats(commands.Cog):
             return await ctx.respond(e.missing_permissions[0], ephemeral=True)
 
 
-    @commands.slash_command(name='corp', guild_ids=[int(settings.DISCORD_GUILD_ID)])
+    @commands.slash_command(name='corp', guild_ids=get_all_servers())
     @option("months", description="Number of months to look back!", min_value=1, max_value=12, default=3)
     @option("current_only", description="This month only!", default=False)
     async def corp(self, ctx, months: int, current_only: bool=False):
@@ -94,7 +96,7 @@ class Fats(commands.Cog):
                 start_time = start_time.replace(day=1, hour=0)
             else: 
                 start_time = start_time - timedelta(days=months*30)
-            user = DiscordUser.objects.get(uid=ctx.author.id).user.profile.main_character
+            user = DiscordUser.objects.aget(uid=ctx.author.id).user.profile.main_character
 
             character_list = EveCharacter.objects.filter(
                 character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
@@ -135,12 +137,11 @@ class Fats(commands.Cog):
         )
 
         try:
-            char = EveCharacter.objects.get(character_name=input_name)
+            char = EveCharacter.objects.aget(character_name=input_name)
 
             try:
                 main = char.character_ownership.user.profile.main_character
                 state = char.character_ownership.user.profile.state.name
-                groups = char.character_ownership.user.groups.all().values_list('name', flat=True)
                 alts = char.character_ownership.user.character_ownerships.all().select_related('character').values_list(
                     'character__character_name', 'character__corporation_ticker', 'character__character_id', 'character__corporation_id')
                 ghosts = char.character_ownership.user.character_ownerships.all().select_related('character').filter(character__corporation_id=98534707)
@@ -293,12 +294,8 @@ class Fats(commands.Cog):
         """
         return await ctx.send(embed=self.audit_embed(ctx.message.content[7:].strip()))
 
-    async def search_characters(ctx: AutocompleteContext):
-        """Returns a list of colors that begin with the characters entered so far."""
-        return list(EveCharacter.objects.filter(character_name__icontains=ctx.value).values_list('character_name', flat=True)[:10])
 
-
-    @commands.slash_command(name='audit', guild_ids=[int(settings.DISCORD_GUILD_ID)])
+    @commands.slash_command(name='audit', guild_ids=get_all_servers())
     @option("character", description="Search for a Character!", autocomplete=search_characters)
     async def slash_audit(
         self,
