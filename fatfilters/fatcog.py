@@ -96,7 +96,8 @@ class Fats(commands.Cog):
                 start_time = start_time.replace(day=1, hour=0)
             else: 
                 start_time = start_time - timedelta(days=months*30)
-            user = DiscordUser.objects.aget(uid=ctx.author.id).user.profile.main_character
+            user = await DiscordUser.objects.aget(uid=ctx.author.id)
+            user = user.user.profile.main_character
 
             character_list = EveCharacter.objects.filter(
                 character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
@@ -130,14 +131,14 @@ class Fats(commands.Cog):
         except commands.MissingPermissions as e:
             return await ctx.respond(e.missing_permissions[0], ephemeral=True)
 
-    def audit_embed(self, input_name):
+    async def audit_embed(self, input_name):
         embed = Embed(
             title="Account Audit {character_name}".format(
                 character_name=input_name)
         )
 
         try:
-            char = EveCharacter.objects.aget(character_name=input_name)
+            char = await EveCharacter.objects.aget(character_name=input_name)
 
             try:
                 main = char.character_ownership.user.profile.main_character
@@ -298,7 +299,7 @@ class Fats(commands.Cog):
         Gets Auth/audit data about a character 
         Input: a Eve Character Name
         """
-        return await ctx.send(embed=self.audit_embed(ctx.message.content[7:].strip()))
+        return await ctx.send(embed=await self.audit_embed(ctx.message.content[7:].strip()))
 
 
     @commands.slash_command(name='audit', guild_ids=get_all_servers())
@@ -319,7 +320,7 @@ class Fats(commands.Cog):
                 ]
             )
             await ctx.defer()
-            return await ctx.respond(embed=self.audit_embed(character))
+            return await ctx.respond(embed=await self.audit_embed(character))
         except commands.MissingPermissions as e:
             return await ctx.respond(e.missing_permissions[0], ephemeral=True)
 
