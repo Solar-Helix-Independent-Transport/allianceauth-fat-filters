@@ -96,7 +96,7 @@ class Fats(commands.Cog):
                 start_time = start_time.replace(day=1, hour=0)
             else: 
                 start_time = start_time - timedelta(days=months*30)
-            user = await DiscordUser.objects.aget(uid=ctx.author.id)
+            user = DiscordUser.objects.get(uid=ctx.author.id)
             user = user.user.profile.main_character
 
             character_list = EveCharacter.objects.filter(
@@ -138,7 +138,7 @@ class Fats(commands.Cog):
         )
 
         try:
-            char = await EveCharacter.objects.aget(character_name=input_name)
+            char = EveCharacter.objects.get(character_name=input_name)
 
             try:
                 main = char.character_ownership.user.profile.main_character
