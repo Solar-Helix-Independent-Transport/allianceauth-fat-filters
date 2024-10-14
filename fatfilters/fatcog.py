@@ -1,5 +1,6 @@
 # Cog Stuff
 from datetime import timedelta
+from aadiscordbot.utils.auth import get_auth_user
 from discord import AutocompleteContext, option
 from discord.ext import commands
 from discord.embeds import Embed
@@ -44,8 +45,9 @@ class Fats(commands.Cog):
         try:
             await ctx.defer(ephemeral=True)
             start_time = timezone.now() - timedelta(days=months*30)
-            user = DiscordUser.objects.get(uid=ctx.author.id).user
+            user = get_auth_user(ctx.author, ctx.guild)
             character_list = user.character_ownerships.all()
+
             fat_config = FATCogConfiguration.get_solo()
             fat_types = fat_config.fleet_type_filter.all()
             fats = Fat.objects.filter(
