@@ -98,8 +98,8 @@ class Fats(commands.Cog):
                 start_time = start_time.replace(day=1, hour=0)
             else: 
                 start_time = start_time - timedelta(days=months*30)
-            user = DiscordUser.objects.get(uid=ctx.author.id)
-            user = user.user.profile.main_character
+            user = user = get_auth_user(ctx.author, ctx.guild)
+            user = user.profile.main_character
 
             character_list = EveCharacter.objects.filter(
                 character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
