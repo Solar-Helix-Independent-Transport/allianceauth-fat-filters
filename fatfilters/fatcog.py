@@ -90,8 +90,11 @@ class Fats(commands.Cog):
         Show your corps basic stats from the FAT module
         """
         try:
-            has_any_perm(ctx.author.id, [
-                            'afat.stats_corporation_own'])
+            has_any_perm(
+                ctx.author.id, 
+                ['afat.stats_corporation_own'],
+                guild=ctx.guild
+            )
             await ctx.defer(ephemeral=True)
             start_time = timezone.now() 
             if current_only:
