@@ -139,17 +139,19 @@ class Fats(commands.Cog):
             embed = Embed()
             embed.title = f"{user.corporation_ticker} FAT Activity"
             gap = "               "
-            leaderboard = [
-                f"{t}(+{non_strat.get(c)}){gap[len(str(f'{t}(+{non_strat.get(t,0)})')):15]}{c}" for c,t in {
+            leaderboard = []
+            for c,t in {
                     k: v for k, v in sorted(
                         mains.items(),
                         key=lambda item: item[1],
                         reverse=True
                     )
-                }.items()
-            ]
+                }.items():
+                str_fat = f"{t}(+{non_strat.get(t,0)})"
+                gap_pad = len(str(str_fat))
+                leaderboard.append(f"{str_fat}{gap[gap_pad:15]}{c}")
             message = "\n".join(leaderboard)
-            embed.description = f'Data since {start_time.strftime("%Y/%m/%d")}\n```Fats        Main\n{message}```\nStrat Fats(+ Non Strat Fats)'
+            embed.description = f'Data since {start_time.strftime("%Y/%m/%d")}\n```Fats           Main\n{message}```\nStrat Fats(+ Non Strat Fats)'
 
             embed.add_field(name=f"Mains seen in last {months} Months",
                             value=fat_count,
