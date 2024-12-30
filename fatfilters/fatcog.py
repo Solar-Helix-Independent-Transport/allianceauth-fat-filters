@@ -140,7 +140,7 @@ class Fats(commands.Cog):
             embed.title = f"{user.corporation_ticker} FAT Activity"
             gap = "               "
             leaderboard = [
-                f"{t}(+{non_strat.get(c)}){gap[len(f'{t}(+{non_strat.get(t)})'):15]}{c}" for c,t in {
+                f"{t}(+{non_strat.get(c)}){gap[len(str(f'{t}(+{non_strat.get(t,0)})')):15]}{c}" for c,t in {
                     k: v for k, v in sorted(
                         mains.items(),
                         key=lambda item: item[1],
