@@ -147,7 +147,7 @@ class Fats(commands.Cog):
                         reverse=True
                     )
                 }.items():
-                str_fat = f"{t}(+{non_strat.get(t,0)})"
+                str_fat = f"{t}(+{non_strat.get(c,0)})"
                 gap_pad = len(str(str_fat))
                 leaderboard.append(f"{str_fat}{gap[gap_pad:15]}{c}")
             message = "\n".join(leaderboard)
