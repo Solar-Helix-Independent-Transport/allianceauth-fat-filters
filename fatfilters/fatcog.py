@@ -117,19 +117,41 @@ class Fats(commands.Cog):
             ).values(
                 "character__character_ownership__user__profile__main_character__character_name"
             ).annotate(Count(f'id'))
-            fat_count = fats.count()
+
+            fats_non_strat = Fat.objects.filter(
+                character__in=character_list,
+                fatlink__created__gte=start_time,
+            ).values(
+                "character__character_ownership__user__profile__main_character__character_name"
+            ).exclude(
+                fatlink__link_type__in=fat_types
+            ).annotate(Count(f'id'))
+
+            non_strat = {}
+            for f in fats_non_strat:
+                non_strat[f['character__character_ownership__user__profile__main_character__character_name']] = f['id__count']
+
+            fat_count = fats_non_strat.count()
             mains = {}
             if fat_count > 0:
                 for f in fats:
                     mains[f['character__character_ownership__user__profile__main_character__character_name']] = f['id__count']
             embed = Embed()
             embed.title = f"{user.corporation_ticker} FAT Activity"
-            gap = "          "
-            leaderboard = [f"{t}{gap[len(str(t)):10]}{c}" for c,t in {k: v for k, v in sorted(mains.items(), key=lambda item: item[1], reverse=True)}.items()]
+            gap = "               "
+            leaderboard = [
+                f"{t}(+{non_strat.get(c)}){gap[len(f"{t}(+{non_strat.get(t)})"):15]}{c}" for c,t in {
+                    k: v for k, v in sorted(
+                        mains.items(),
+                        key=lambda item: item[1],
+                        reverse=True
+                    )
+                }.items()
+            ]
             message = "\n".join(leaderboard)
-            embed.description = f'Data since {start_time.strftime("%Y/%m/%d")}\n```Fats      Main\n{message}```'
+            embed.description = f'Data since {start_time.strftime("%Y/%m/%d")}\n```Fats        Main\n{message}```\nStrat Fats(+ Non Strat Fats)'
 
-            embed.add_field(name=f"Last {months} Months",
+            embed.add_field(name=f"Mains seen in last {months} Months",
                             value=fat_count,
                             inline=False)
             await ctx.respond(embed=embed, ephemeral=True)
