@@ -112,8 +112,8 @@ class Fats(commands.Cog):
             fats = Fat.objects.filter(
                 character__in=character_list,
                 fatlink__created__gte=start_time,
-                fatlink__link_type__in=fat_types.values_list('name', flat=True),
-                fatlink__link_type__isnull=False
+                fatlink__fleet_type__in=fat_types.values_list('name', flat=True),
+                fatlink__fleet_type__isnull=False
             ).values(
                 "character__character_ownership__user__profile__main_character__character_name"
             ).annotate(Count(f'id'))
