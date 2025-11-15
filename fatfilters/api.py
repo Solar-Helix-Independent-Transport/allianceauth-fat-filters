@@ -31,8 +31,8 @@ from django.utils.cache import get_cache_key, learn_cache_key, patch_response_he
 logger = logging.getLogger(__name__)
 
 
-api = NinjaAPI(title="CorpTools API", version="0.0.1",
-               urls_namespace='fats:api', auth=django_auth, csrf=True,
+api = NinjaAPI(title="Fat Filters API", version="0.0.1",
+               urls_namespace='fats:api', auth=django_auth,
                openapi_url=settings.DEBUG and "/openapi.json" or "")
 
 def get_visible_fat_qs(user):
