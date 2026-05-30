@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('afat', '0021_alter_afatlink_fleet'),
+        # ('afat', '0021_alter_afatlink_fleet'),
         ('fatfilters', '0003_alter_fatintimeperiod_ship_names'),
     ]
 

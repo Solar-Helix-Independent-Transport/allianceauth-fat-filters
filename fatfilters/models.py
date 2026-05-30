@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from afat.models import Fat, FleetType
 from allianceauth.authentication.models import CharacterOwnership
-from corptools.models import EveItemType
+from eve_sde.models import ItemType
 from solo.models import SingletonModel
 
 class BaseFilter(models.Model):
@@ -31,7 +31,7 @@ class FATInTimePeriod(BaseFilter):
 
     fleet_type_filter = models.ManyToManyField(FleetType, blank=True)
 
-    ship_names = models.ManyToManyField(EveItemType, blank=True, limit_choices_to={'group__category_id': 6})
+    ship_names = models.ManyToManyField(ItemType, blank=True, limit_choices_to={'group__category_id': 6})
 
     def process_filter(self, user: User): # legacy pass fail
         try:
