@@ -36,6 +36,158 @@ class Fats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # --- Helpers ---
+
+    async def _resolve_auth_user(self, ctx):
+        try:
+            return get_auth_user(ctx.author, ctx.guild)
+        except Exception:
+            await ctx.respond("Your Discord account is not linked to Auth.", ephemeral=True)
+            return None
+
+    async def _get_fat_type_names(self, ctx):
+        fat_types = FATCogConfiguration.get_solo().fleet_type_filter.all()
+        if not fat_types.exists():
+            await ctx.respond("No fleet types are configured.", ephemeral=True)
+            return None
+        return fat_types.values_list('name', flat=True)
+
+    def _add_character_fields(self, embed, char_list, label):
+        for idx, chunk in enumerate([char_list[i:i+6] for i in range(0, len(char_list), 6)]):
+            if idx < 6:
+                embed.add_field(name=f"{label} {idx+1}", value=", ".join(chunk), inline=False)
+            else:
+                embed.add_field(name=f"{label} {idx} **(Discord Limited There are More)**", value=", ".join(chunk), inline=False)
+                break
+
+    def _discord_info_string(self, auth_user):
+        try:
+            discord_uid = auth_user.discord.uid
+            discord_string = f"<@{discord_uid}>"
+            member = get(self.bot.get_all_members(), id=discord_uid)
+            if not member:
+                return discord_string
+            try:
+                username = f"{member.name}#{member.discriminator}" if member.discriminator != "0" else member.name
+                name = f"**{member.display_name}** `{username}` <@{member.id}>"
+                stat_str = (
+                    f"**Status:** {member.status.name} "
+                    f"(D: {member.desktop_status.name}, M: {member.mobile_status.name}, W: {member.web_status.name}) "
+                    f"B:{member.bot}"
+                )
+                date_time = member.created_at.strftime("%Y/%m/%d %H:%M:%S")
+                return f"{name}\n{stat_str}\n**User Created:** {date_time}"
+            except Exception as e:
+                logger.error(e)
+                return discord_string
+        except Exception as e:
+            logger.error(e)
+            return "unknown"
+
+    def _fat_summary(self, auth_user):
+        start_time = timezone.now() - timedelta(days=90)
+        character_list = auth_user.character_ownerships.all()
+        fats = Fat.objects.filter(
+            character__in=character_list.values("character"),
+            fatlink__created__gte=start_time
+        ).order_by("-fatlink__created")
+        fat_count = fats.count()
+        if fat_count == 0:
+            return fat_count, "**No Fleet Activity!!**"
+        ships = list(set(fats.values_list('ship__name', flat=True)))[:10]
+        last_fleet = fats.first().fatlink
+        last_date = last_fleet.created.strftime("%Y-%m-%d %H:%M")
+        last_message = (
+            f"**Last Fleet:** {last_fleet.character}: {last_fleet.fleet} ({last_date})"
+            f"\n**Recent Ships:** {', '.join(ships)}"
+        )
+        return fat_count, last_message
+
+    # --- Audit embed helpers ---
+
+    def _embed_linked_character(self, char):
+        auth_user = char.character_ownership.user
+        main = auth_user.profile.main_character
+        state = auth_user.profile.state.name
+
+        fat_count, fat_message = self._fat_summary(auth_user)
+        discord_string = self._discord_info_string(auth_user)
+
+        ghosts = auth_user.character_ownerships.all().select_related('character').filter(
+            character__corporation_id=98534707
+        )
+        if ghosts.exists():
+            ghost = "**Ghosts:** {}".format(", ".join(g.character.character_name for g in ghosts))
+        else:
+            ghost = "**No Ghost Found!!!**"
+
+        url = "[Auth Audit Link]({})".format(get_site_url() + "/audit/r/" + str(main.character_id) + "/")
+
+        embed = Embed(title=f"Account Audit {char}")
+        embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{4}\n{5}\n{6}".format(
+            char, main, main.corporation_ticker, state, fat_message, ghost, url
+        )
+        embed.add_field(name="Fats (3 Month)", value=fat_count, inline=False)
+
+        alts = auth_user.character_ownerships.all().select_related('character').values_list(
+            'character__character_name', 'character__corporation_ticker',
+            'character__character_id', 'character__corporation_id'
+        )
+        alt_list = [
+            "[{}](https://evewho.com/character/{}) *[ [{}](https://evewho.com/corporation/{}) ]*".format(
+                a[0], a[2], a[1], a[3]
+            ) for a in alts
+        ]
+        self._add_character_fields(embed, alt_list, "Linked Characters")
+
+        loaded = FullyLoadedFilter(name="fl", description="fl").audit_filter([auth_user])
+        if not loaded[auth_user.id]['check']:
+            embed.add_field(
+                name="Characters Missing From Audit",
+                value=loaded[auth_user.id]["message"],
+                inline=False
+            )
+
+        embed.add_field(name="Discord Link", value=discord_string, inline=False)
+        return embed
+
+    def _embed_unlinked_character(self, char):
+        users = User.objects.filter(id__in=char.ownership_records.values('user'))
+        characters = EveCharacter.objects.filter(ownership_records__user__in=users).distinct()
+
+        embed = Embed(title="Character Lookup")
+        embed.colour = Color.blue()
+        embed.description = "**{0}** is Unlinked searching for any characters linked to known users".format(char)
+
+        user_names = ", ".join(u.username for u in users) or "No User Links found"
+        embed.add_field(name="Old Users", value=user_names, inline=False)
+
+        alt_list = [
+            "[{}](https://evewho.com/character/{}) *[ [{}](https://evewho.com/corporation/{}) ]*".format(
+                c.character_name, c.character_id, c.corporation_ticker, c.corporation_id
+            ) for c in characters
+        ]
+        self._add_character_fields(embed, alt_list, "Found Characters")
+        return embed
+
+    def _embed_unknown_character(self, input_name):
+        embed = Embed(title=f"Account Audit {input_name}")
+        embed.colour = Color.red()
+        embed.description = f"Character **{input_name}** does not exist in our Auth system"
+        return embed
+
+    async def audit_embed(self, input_name):
+        try:
+            char = EveCharacter.objects.get(character_name=input_name)
+            try:
+                return self._embed_linked_character(char)
+            except ObjectDoesNotExist:
+                return self._embed_unlinked_character(char)
+        except EveCharacter.DoesNotExist:
+            return self._embed_unknown_character(input_name)
+
+    # --- Commands ---
+
     @commands.slash_command(name='me', guild_ids=get_all_servers())
     @option("months", description="Number of months to look back!", min_value=1, max_value=12, default=3)
     async def me(self, ctx, months: int):
@@ -44,43 +196,33 @@ class Fats(commands.Cog):
         """
         try:
             await ctx.defer(ephemeral=True)
-            start_time = timezone.now() - timedelta(days=months*30)
-            try:
-                user = get_auth_user(ctx.author, ctx.guild)
-            except Exception:
-                return await ctx.respond("Your Discord account is not linked to Auth.", ephemeral=True)
-            character_list = user.character_ownerships.all()
+            user = await self._resolve_auth_user(ctx)
+            if user is None:
+                return
+            fat_type_names = await self._get_fat_type_names(ctx)
+            if fat_type_names is None:
+                return
 
-            fat_config = FATCogConfiguration.get_solo()
-            fat_types = fat_config.fleet_type_filter.all()
-            if not fat_types.exists():
-                return await ctx.respond("No fleet types are configured.", ephemeral=True)
+            start_time = timezone.now() - timedelta(days=months*30)
             fats = Fat.objects.filter(
-                character__in=character_list.values("character"),
+                character__in=user.character_ownerships.values("character"),
                 fatlink__created__gte=start_time,
-                fatlink__fleet_type__in=fat_types.values_list('name', flat=True),
+                fatlink__fleet_type__in=fat_type_names,
             ).order_by("-fatlink__created")
             fat_count = fats.count()
             if fat_count > 0:
-                ships = set(fats.values_list('shiptype', flat=True))
-                ships = list(ships)[:10]
+                ships = list(set(fats.values_list('shiptype', flat=True)))[:10]
                 last_fleet = fats.first().fatlink
                 last_date = last_fleet.created.strftime("%Y-%m-%d %H:%M")
                 last_message = f"{last_fleet.character}: {last_fleet.fleet} ({last_date})"
+
             embed = Embed()
             embed.title = "Recent FAT Activity"
-            embed.description = f"Plese check auth for more info!"
-
-            embed.add_field(name=f"Last {months} Months",
-                            value=fat_count,
-                            inline=False)
+            embed.description = "Plese check auth for more info!"
+            embed.add_field(name=f"Last {months} Months", value=fat_count, inline=False)
             if fat_count > 0:
-                embed.add_field(name="Recent Ships",
-                                value=", ".join(ships),
-                                inline=False)
-                embed.add_field(name="Last Fleet",
-                                value=last_message,
-                                inline=False)
+                embed.add_field(name="Recent Ships", value=", ".join(ships), inline=False)
+                embed.add_field(name="Last Fleet", value=last_message, inline=False)
             await ctx.respond(embed=embed, ephemeral=True)
         except commands.MissingPermissions as e:
             return await ctx.respond(e.missing_permissions[0], ephemeral=True)
@@ -99,26 +241,24 @@ class Fats(commands.Cog):
                 guild=ctx.guild
             )
             await ctx.defer(ephemeral=True)
+            auth_user = await self._resolve_auth_user(ctx)
+            if auth_user is None:
+                return
+            fat_type_names = await self._get_fat_type_names(ctx)
+            if fat_type_names is None:
+                return
+
             start_time = timezone.now()
             if current_only:
                 start_time = start_time.replace(day=1, hour=0)
             else:
                 start_time = start_time - timedelta(days=months*30)
-            try:
-                auth_user = get_auth_user(ctx.author, ctx.guild)
-            except Exception:
-                return await ctx.respond("Your Discord account is not linked to Auth.", ephemeral=True)
+
             user = auth_user.profile.main_character
-
-            character_list = EveCharacter.objects.filter(
-                character_ownership__user__profile__main_character__corporation_id=user.corporation_id)
-            fat_config = FATCogConfiguration.get_solo()
-            fat_types = fat_config.fleet_type_filter.all()
-            if not fat_types.exists():
-                return await ctx.respond("No fleet types are configured.", ephemeral=True)
-
-            fat_type_names = fat_types.values_list('name', flat=True)
             main_name_field = "character__character_ownership__user__profile__main_character__character_name"
+            character_list = EveCharacter.objects.filter(
+                character_ownership__user__profile__main_character__corporation_id=user.corporation_id
+            )
 
             fats = Fat.objects.filter(
                 character__in=character_list,
@@ -133,201 +273,27 @@ class Fats(commands.Cog):
                 fatlink__fleet_type__in=fat_type_names
             ).values(main_name_field).annotate(Count('id'))
 
-            non_strat = {}
-            for f in fats_non_strat:
-                non_strat[f[main_name_field]] = f['id__count']
-
-            mains = {}
-            for f in fats:
-                mains[f[main_name_field]] = f['id__count']
+            non_strat = {f[main_name_field]: f['id__count'] for f in fats_non_strat}
+            mains = {f[main_name_field]: f['id__count'] for f in fats}
             fat_count = len(mains)
+
+            leaderboard = []
+            for c, t in sorted(mains.items(), key=lambda item: item[1], reverse=True):
+                str_fat = f"{t}(+{non_strat.get(c, 0)})"
+                leaderboard.append(f"{str_fat:<15}{c}")
+            message = "\n".join(leaderboard)
+
             embed = Embed()
             embed.title = f"{user.corporation_ticker} FAT Activity"
-            gap = "               "
-            leaderboard = []
-            for c, t in {
-                k: v for k, v in sorted(
-                    mains.items(),
-                    key=lambda item: item[1],
-                    reverse=True
-                )
-            }.items():
-                str_fat = f"{t}(+{non_strat.get(c, 0)})"
-                gap_pad = len(str(str_fat))
-                leaderboard.append(f"{str_fat}{gap[gap_pad:15]}{c}")
-            message = "\n".join(leaderboard)
-            embed.description = f'Data since {start_time.strftime("%Y/%m/%d")}\n```Fats           Main\n{message}```\nStrat Fats(+ Non Strat Fats)'
-
-            embed.add_field(name=f"Mains seen in last {months} Months",
-                            value=fat_count,
-                            inline=False)
+            embed.description = (
+                f'Data since {start_time.strftime("%Y/%m/%d")}\n'
+                f'```Fats           Main\n{message}```\n'
+                f'Strat Fats(+ Non Strat Fats)'
+            )
+            embed.add_field(name=f"Mains seen in last {months} Months", value=fat_count, inline=False)
             await ctx.respond(embed=embed, ephemeral=True)
         except commands.MissingPermissions as e:
             return await ctx.respond(e.missing_permissions[0], ephemeral=True)
-
-    async def audit_embed(self, input_name):
-        embed = Embed(
-            title="Account Audit {character_name}".format(
-                character_name=input_name)
-        )
-
-        try:
-            char = EveCharacter.objects.get(character_name=input_name)
-
-            try:
-                main = char.character_ownership.user.profile.main_character
-                state = char.character_ownership.user.profile.state.name
-                alts = char.character_ownership.user.character_ownerships.all().select_related('character').values_list(
-                    'character__character_name', 'character__corporation_ticker', 'character__character_id', 'character__corporation_id')
-                ghosts = char.character_ownership.user.character_ownerships.all().select_related(
-                    'character').filter(character__corporation_id=98534707)
-                ghost = ""
-
-                if ghosts.exists():
-                    _g = []
-                    for g in ghosts:
-                        _g.append(g.character.character_name)
-                    ghost = "**Ghosts:** {}".format(
-                        ", ".join(_g)
-                    )
-                else:
-                    ghost = "**No Ghost Found!!!**"
-                try:
-                    discord_string = "<@{}>".format(
-                        char.character_ownership.user.discord.uid)
-
-                    user = get(self.bot.get_all_members(), id=char.character_ownership.user.discord.uid)
-                    try:
-                        if user:
-                            # url = user.avatar.url
-                            is_bot = user.bot
-                            created_at = user.created_at
-                            desktop_status = user.desktop_status.name
-                            mobile_status = user.mobile_status.name
-                            web_status = user.web_status.name
-                            status = user.status.name
-                            username = f"{user.name}#{user.discriminator}" if user.discriminator != "0" else user.name
-                            name = f"**{user.display_name}** `{username}` <@{user.id}>"
-                            stat_str = f"**Status:** {status} (D: {desktop_status}, M: {mobile_status}, W: {web_status}) B:{is_bot}"
-                            date_time = created_at.strftime("%Y/%m/%d %H:%M:%S")
-                            discord_string = f"{name}\n{stat_str}\n**User Created:** {date_time}"
-                    except Exception as e:
-                        logger.error(e)
-                except Exception as e:
-                    logger.error(e)
-                    discord_string = "unknown"
-
-                start_time = timezone.now() - timedelta(days=90)
-                character_list = char.character_ownership.user.character_ownerships.all()
-                fats = Fat.objects.filter(
-                    character__in=character_list.values("character"),
-                    fatlink__created__gte=start_time
-                ).order_by(
-                    "-fatlink__created"
-                )
-                fat_count = fats.count()
-                last_message = "**No Fleet Activity!!**"
-                ships = set()
-                if fat_count > 0:
-                    ships = set(fats.values_list('ship__name', flat=True))
-                    ships = list(ships)[:10]
-                    last_fleet = fats.first().fatlink
-                    last_date = last_fleet.created.strftime("%Y-%m-%d %H:%M")
-                    last_message = f"**Last Fleet:** {last_fleet.character}: {last_fleet.fleet} ({last_date})"
-                embed.add_field(
-                    name="Fats (3 Month)",
-                    value=fat_count,
-                    inline=False
-                )
-
-                if fat_count > 0:
-                    last_message += f"\n**Recent Ships:** {', '.join(ships)}"
-
-                url = "[Auth Audit Link]({})".format(get_site_url() + "/audit/r/" + str(main.character_id) + "/")
-                embed.description = "**{0}** is linked to **{1} [{2}]** (State: {3})\n{4}\n{5}\n{6}".format(
-                    char,
-                    main,
-                    main.corporation_ticker,
-                    state,
-                    last_message,
-                    ghost,
-                    url
-                )
-
-                alt_list = ["[{}](https://evewho.com/character/{}) *[ [{}](https://evewho.com/corporation/{}) ]*".format(
-                    a[0], a[2], a[1], a[3]) for a in alts]
-                for idx, names in enumerate([alt_list[i:i + 6] for i in range(0, len(alt_list), 6)]):
-                    if idx < 6:
-                        embed.add_field(
-                            name="Linked Characters {}".format(idx+1), value=", ".join(names), inline=False
-                        )
-                    else:
-                        embed.add_field(
-                            name="Linked Characters {} **( Discord Limited There are More )**".format(idx), value=", ".join(names), inline=False
-                        )
-                        break
-                loaded = FullyLoadedFilter(name="fl", description="fl").audit_filter([char.character_ownership.user])
-                if not loaded[char.character_ownership.user.id]['check']:
-                    embed.add_field(
-                        name="Characters Missing From Audit", value=loaded[char.character_ownership.user.id]["message"], inline=False
-                    )
-
-                # if len(groups) > 0:
-                #     embed.add_field(
-                #         name="Groups", value=", ".join(groups), inline=False
-                #     )
-
-                embed.add_field(
-                    name="Discord Link", value=discord_string, inline=False
-                )
-
-                return embed
-            except ObjectDoesNotExist:
-                users = char.ownership_records.values('user')
-                users = User.objects.filter(id__in=users)
-                characters = EveCharacter.objects.filter(
-                    ownership_records__user__in=users).distinct()
-                embed = Embed(title="Character Lookup")
-                embed.colour = Color.blue()
-                embed.description = "**{0}** is Unlinked searching for any characters linked to known users".format(
-                    char,
-                )
-                user_names = ["{}".format(user.username) for user in users]
-                if len(user_names) == 0:
-                    user_names = "No User Links found"
-                else:
-                    user_names = ", ".join(user_names)
-
-                embed.add_field(
-                    name="Old Users", value=user_names, inline=False
-                )
-
-                alt_list = ["[{}](https://evewho.com/character/{}) *[ [{}](https://evewho.com/corporation/{}) ]*".format(a.character_name,
-                                                                                                                         a.character_id,
-                                                                                                                         a.corporation_ticker,
-                                                                                                                         a.corporation_id
-                                                                                                                         ) for a in characters]
-                for idx, names in enumerate([alt_list[i:i + 6] for i in range(0, len(alt_list), 6)]):
-                    if idx < 6:
-                        embed.add_field(
-                            name="Found Characters {}".format(idx+1), value=", ".join(names), inline=False
-                        )
-                    else:
-                        embed.add_field(
-                            name="Found Characters {} **( Discord Limited There are More )**".format(idx), value=", ".join(names), inline=False
-                        )
-                        break
-
-                return embed
-
-        except EveCharacter.DoesNotExist:
-            embed.colour = Color.red()
-
-            embed.description = (
-                "Character **{character_name}** does not exist in our Auth system"
-            ).format(character_name=input_name)
-
-            return embed
 
     @commands.command(pass_context=True, hidden=True)
     @sender_has_any_perm(
@@ -340,7 +306,7 @@ class Fats(commands.Cog):
     @message_in_channels(settings.ADMIN_DISCORD_BOT_CHANNELS)
     async def audit(self, ctx):
         """
-        Gets Auth/audit data about a character 
+        Gets Auth/audit data about a character
         Input: a Eve Character Name
         """
         return await ctx.send(embed=await self.audit_embed(ctx.message.content[7:].strip()))
