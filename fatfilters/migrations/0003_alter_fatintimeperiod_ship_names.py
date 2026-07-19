@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('corptools', '0059_invtypematerials_met_type'),
+        # ('corptools', '0059_invtypematerials_met_type'),
         ('fatfilters', '0002_fatintimeperiod_ship_names'),
     ]
 

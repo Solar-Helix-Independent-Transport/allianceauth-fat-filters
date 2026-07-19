@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("eve_sde", "0018_blueprintactivity_blueprintactivityproduct_and_more"),
+        # ("eve_sde", "0018_blueprintactivity_blueprintactivityproduct_and_more"),
         ("fatfilters", "0006_fatcogconfiguration"),
     ]
 
