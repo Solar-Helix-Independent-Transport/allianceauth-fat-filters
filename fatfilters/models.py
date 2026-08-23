@@ -39,13 +39,13 @@ class FATInTimePeriod(BaseFilter):
             character_list = user.character_ownerships.all().select_related('character')
             fat_count = Fat.objects.filter(character__character_id__in=character_list, fatlink__created__gte=start_time)
             ship_names = self.ship_names.all()
-            fleet_types = self.ship_names.all()
-            
+            fleet_types = self.fleet_type_filter.all()
+
             if ship_names.count() > 0:
-                fat_count = fat_count.filter(ship_names__in=ship_names.values_list('name', flat=True))
+                fat_count = fat_count.filter(shiptype__in=list(ship_names.values_list('name', flat=True)))
 
             if fleet_types.count() > 0:
-                fat_count = fat_count.filter(fatlink__fleet_type__in=fleet_types.values_list('name', flat=True))
+                fat_count = fat_count.filter(fatlink__fleet_type__in=list(fleet_types.values_list('name', flat=True)))
 
             if fat_count.count() > self.fats_needed:
                 return True
@@ -66,12 +66,12 @@ class FATInTimePeriod(BaseFilter):
 
         if ship_names.count() > 0:
             fats = fats.filter(
-                shiptype__in=ship_names.values_list('name', flat=True)
+                shiptype__in=list(ship_names.values_list('name', flat=True))
             )
 
         if fleet_types.count() > 0:
             fats = fats.filter(
-                fatlink__fleet_type__in=fleet_types.values_list('name', flat=True)
+                fatlink__fleet_type__in=list(fleet_types.values_list('name', flat=True))
             )
 
         users = defaultdict(list)
